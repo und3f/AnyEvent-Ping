@@ -10,7 +10,6 @@ use Socket qw/SOCK_RAW/;
 use Time::HiRes 'time';
 use IO::Socket::INET qw/sockaddr_in inet_aton/;
 use List::Util ();
-use AnyEvent::Handle;
 require Carp;
 
 my $ICMP_PING = 'ccnnnA*';
@@ -41,6 +40,7 @@ sub new {
     ) or Carp::croak "Unable to create icmp socket : $!";
 
     $self->{_socket} = $socket;
+    $self->{_close} = 0;
 
     # Create Poll object
     $self->{_poll_read} = AnyEvent->io(
@@ -87,6 +87,12 @@ sub ping {
     return $self;
 }
 
+sub end {
+    my $self = shift;
+    $self->{_close} = 1;
+    close $self->{_socket};
+}
+
 sub _add_write_poll {
     my $self = shift;
 
@@ -114,6 +120,11 @@ sub _on_read {
     my $self = shift;
 
     my $socket = $self->{_socket};
+    unless ($self->{_close} == 0) {
+        $self->end;
+        return;
+    }
+
     $socket->sysread(my $chunk, 4194304, 0);
 
     my $icmp_msg = substr $chunk, 20;
