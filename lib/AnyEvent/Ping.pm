@@ -429,6 +429,22 @@ combined with the 8 bytes of ICMP header data.
 Each packet will be generated with generate_data_random() like this:
 
     &AnyEvent::Ping::generate_data_random($packet_size);
+    
+=head3 C<socket_type>
+
+Default to C<raw>, but can also be C<dgram>.  When dgram is set, a datagram ICMP
+socket is created.  This is an extension implemented in Linux and Mac OS X
+allowing ping ICMP messages to be sent while not root.
+
+Under linux, you will need to whitelist a group that your pinging code is running
+under.  The relevent sysctl takes a range of groups:
+
+   echo '0 2000' > /proc/sys/net/ipv4/ping_group_range
+   
+or to make it last between reboots:
+
+   echo "net.ipv4.ping_group_range=0 2000" > /etc/sysctl.d/60-icmp-ping.conf
+   /etc/init.d/procps restart
 
 =head2 C<ping>
 
