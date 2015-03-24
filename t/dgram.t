@@ -8,13 +8,13 @@ use AnyEvent;
 
 # TODO: determinate local address and broadcast address
 
-plan skip_all => 'You can run tests just as root' if $<;
 
 use_ok 'AnyEvent::Ping';
 
 my $ping = new_ok 'AnyEvent::Ping' => [
-    timeout    => 1,
-    on_prepare => \&on_prepare
+    timeout     => 1,
+    on_prepare  => \&on_prepare,
+    socket_type => 'dgram',
 ];
 
 subtest 'ping 127.0.0.1' => sub {
@@ -40,6 +40,7 @@ subtest 'ping 127.0.0.1' => sub {
 
     done_testing;
 };
+
 
 subtest 'check two concurrent ping' => sub {
     my $cv = AnyEvent->condvar;
@@ -93,7 +94,7 @@ subtest 'ping broadcast' => sub {
 };
 
 subtest 'force end' => sub {
-    my $ping = new_ok 'AnyEvent::Ping';
+    my $ping = new_ok 'AnyEvent::Ping' => [socket_type => 'dgram'];
     my $cv = AnyEvent->condvar;
 
     my $long_times = 1000;
