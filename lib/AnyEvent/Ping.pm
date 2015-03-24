@@ -195,7 +195,7 @@ sub _on_read {
     if ($self->{socket_type} eq 'dgram' && $^O eq 'linux') {
         # with a dgram socket under linux, the indentifier is rewritten by the
         # kernel, so we match via the random data in the packet instead.
-        $request = List::Util::first { $data == $_->{data} } @{$self->{_tasks}};
+        $request = List::Util::first { $data eq $_->{data} } @{$self->{_tasks}};
     }
     else {
         $request = List::Util::first { $identifier == $_->{identifier} } @{$self->{_tasks}};
