@@ -7,15 +7,30 @@ use Test::More;
 use AnyEvent;
 
 # TODO: determinate local address and broadcast address
+use AnyEvent::Ping;
 
 
-use_ok 'AnyEvent::Ping';
 
-my $ping = new_ok 'AnyEvent::Ping' => [
-    timeout     => 1,
-    on_prepare  => \&on_prepare,
-    socket_type => 'dgram',
-];
+my $ping = eval {
+    AnyEvent::Ping->new(
+        timeout     => 1,
+        on_prepare  => \&on_prepare,
+        socket_type => 'dgram',
+    );
+};
+
+if ($@) {
+    if ($@ =~ m/Permission denied/) {
+        plan skip_all => 'Permission denied for DGRAM socket';
+        
+    }
+    else {
+        die $@
+    }
+}
+else {
+    isa_ok($ping, 'AnyEvent::Ping');
+}
 
 subtest 'ping 127.0.0.1' => sub {
     my $result;
