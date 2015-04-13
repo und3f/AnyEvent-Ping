@@ -78,6 +78,13 @@ sub interval { @_ > 1 ? $_[0]->{interval} = $_[1] : $_[0]->{interval} }
 
 sub timeout { @_ > 1 ? $_[0]->{timeout} = $_[1] : $_[0]->{timeout} }
 
+sub packet_size {
+    my ($self, $size) = @_;
+    $self->{packet_generator} = sub {
+        &AnyEvent::Ping::generate_data_random($size);
+    };
+}
+
 sub error { $_[0]->{error} }
 
 sub ping {
