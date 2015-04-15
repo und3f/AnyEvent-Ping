@@ -123,11 +123,20 @@ subtest 'different packet size' => sub {
     my $ping = new_ok 'AnyEvent::Ping';
     my $cv = AnyEvent->condvar;
 
-    $ping->packet_size(128);
+    my $data = [
+        ['127.0.0.1', 64],
+        ['8.8.8.8', 128],
+        ['8.8.4.4', 254]
+    ];
 
-    $ping->ping('127.0.0.1', 4, sub {
-        $cv->send;
-    });
+    for my $d (@$data) {
+        my ($addr, $size) = @$d;
+        $ping->packet_size($size);
+
+        $ping->ping($addr, 4, sub {
+            $cv->send;
+        });
+    }
 
     $cv->recv;
 
