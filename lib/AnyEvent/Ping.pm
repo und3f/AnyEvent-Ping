@@ -6,7 +6,7 @@ use 5.008_001;
 
 our $VERSION = 0.011;
 
-use Socket qw/SOCK_RAW/;
+use Socket qw/SOCK_RAW SOCK_DGRAM/;
 use Time::HiRes 'time';
 use IO::Socket::INET qw/sockaddr_in inet_aton/;
 use List::Util ();
@@ -39,17 +39,20 @@ sub new {
             &AnyEvent::Ping::generate_data_random($packet_size);
         };
     }
+    
+    my $socket_type = $args{socket_type} || 'raw';
 
     my $self = bless {
         interval       => $interval,
         timeout        => $timeout,
-        packet_generator => $packet_generator
+        packet_generator => $packet_generator,
+        socket_type      => $socket_type,
     }, $class;
 
     # Create RAW socket
     my $socket = IO::Socket::INET->new(
         Proto    => 'icmp',
-        Type     => SOCK_RAW,
+        Type     => $socket_type eq 'dgram' ? SOCK_DGRAM : SOCK_RAW,
         Blocking => 0
     ) or Carp::croak "Unable to create icmp socket : $!";
 
@@ -161,7 +164,14 @@ sub _on_read {
     my $socket = $self->{_socket};
     $socket->sysread(my $chunk, 4194304, 0);
 
-    my $icmp_msg = substr $chunk, 20;
+    my $icmp_msg;
+    
+    if ($self->{socket_type} eq 'raw' || $^O ne 'linux') {
+        $icmp_msg = substr $chunk, 20;
+    }
+    else {
+        $icmp_msg = $chunk;
+    }
 
     my ($type, $identifier, $sequence, $data);
 
@@ -181,9 +191,15 @@ sub _on_read {
     }
 
     # Find our task
-    my $request =
-      List::Util::first { $identifier == $_->{identifier} }
-    @{$self->{_tasks}};
+    my $request;
+    if ($self->{socket_type} eq 'dgram' && $^O eq 'linux') {
+        # with a dgram socket under linux, the indentifier is rewritten by the
+        # kernel, so we match via the random data in the packet instead.
+        $request = List::Util::first { $data eq $_->{data} } @{$self->{_tasks}};
+    }
+    else {
+        $request = List::Util::first { $identifier == $_->{identifier} } @{$self->{_tasks}};
+    }
 
     return unless $request;
 
@@ -413,6 +429,22 @@ combined with the 8 bytes of ICMP header data.
 Each packet will be generated with generate_data_random() like this:
 
     &AnyEvent::Ping::generate_data_random($packet_size);
+    
+=head3 C<socket_type>
+
+Default to C<raw>, but can also be C<dgram>.  When dgram is set, a datagram ICMP
+socket is created.  This is an extension implemented in Linux and Mac OS X
+allowing ping ICMP messages to be sent while not root.
+
+Under linux, you will need to whitelist a group that your pinging code is running
+under.  The relevent sysctl takes a range of groups:
+
+   echo '0 2000' > /proc/sys/net/ipv4/ping_group_range
+   
+or to make it last between reboots:
+
+   echo "net.ipv4.ping_group_range=0 2000" > /etc/sysctl.d/60-icmp-ping.conf
+   /etc/init.d/procps restart
 
 =head2 C<ping>
 

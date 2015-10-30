@@ -7,15 +7,30 @@ use Test::More;
 use AnyEvent;
 
 # TODO: determinate local address and broadcast address
+use AnyEvent::Ping;
 
-plan skip_all => 'You can run tests just as root' if $<;
 
-use_ok 'AnyEvent::Ping';
 
-my $ping = new_ok 'AnyEvent::Ping' => [
-    timeout    => 1,
-    on_prepare => \&on_prepare
-];
+my $ping = eval {
+    AnyEvent::Ping->new(
+        timeout     => 1,
+        on_prepare  => \&on_prepare,
+        socket_type => 'dgram',
+    );
+};
+
+if ($@) {
+    if ($@ =~ m/Permission denied/) {
+        plan skip_all => 'Permission denied for DGRAM socket';
+        
+    }
+    else {
+        die $@
+    }
+}
+else {
+    isa_ok($ping, 'AnyEvent::Ping');
+}
 
 subtest 'ping 127.0.0.1' => sub {
     my $result;
@@ -40,6 +55,7 @@ subtest 'ping 127.0.0.1' => sub {
 
     done_testing;
 };
+
 
 subtest 'check two concurrent ping' => sub {
     my $cv = AnyEvent->condvar;
@@ -93,7 +109,7 @@ subtest 'ping broadcast' => sub {
 };
 
 subtest 'force end' => sub {
-    my $ping = new_ok 'AnyEvent::Ping';
+    my $ping = new_ok 'AnyEvent::Ping' => [socket_type => 'dgram'];
     my $cv = AnyEvent->condvar;
 
     my $long_times = 1000;
