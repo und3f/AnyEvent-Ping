@@ -119,6 +119,30 @@ subtest 'force end' => sub {
     done_testing;
 };
 
+subtest 'different packet size' => sub {
+    my $ping = new_ok 'AnyEvent::Ping';
+    my $cv = AnyEvent->condvar;
+
+    my $data = [
+        ['127.0.0.1', 64],
+        ['8.8.8.8', 128],
+        ['8.8.4.4', 254]
+    ];
+
+    for my $d (@$data) {
+        my ($addr, $size) = @$d;
+        $ping->packet_size($size);
+
+        $ping->ping($addr, 4, sub {
+            $cv->send;
+        });
+    }
+
+    $cv->recv;
+
+    done_testing;
+};
+
 subtest 'preparation socket' => sub {
     our $preparation_socket;
     isa_ok($preparation_socket, 'IO::Socket');
