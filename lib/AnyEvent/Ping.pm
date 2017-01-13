@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use 5.008_001;
 
-our $VERSION = 0.011;
+our $VERSION = '0.011';
 
 use Socket qw/SOCK_RAW/;
 use Time::HiRes 'time';
@@ -432,6 +432,10 @@ Perform a ping of a given $ip address $n times.
     $ping->end;
 
 Ends all pings and releases resources.
+
+=head2 C<generate_data_random($packet_size)>
+
+Generates a random binary string of length C<$packet_size> bytes.
 
 =head1 SEE ALSO
 
